@@ -17,12 +17,17 @@
 /**
  * Front-end class.
  *
- * @package availability_othercompleted
+ * @package   availability_othercompleted
  * @copyright MU DOT MY PLT <support@mu.my>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace availability_othercompleted;
+
+use cm_info;
+use completion_info;
+use context_course;
+use section_info;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -30,7 +35,7 @@ class frontend extends \core_availability\frontend {
     /**
      * @var array Cached init parameters
      */
-    protected $cacheparams = array();
+    protected $cacheparams = [];
 
     /**
      * @var string IDs of course, cm, and section for cache (if any)
@@ -38,11 +43,11 @@ class frontend extends \core_availability\frontend {
     protected $cachekey = '';
 
     protected function get_javascript_strings() {
-        return array('option_complete', 'label_cm', 'label_completion');
+        return ['option_complete', 'label_cm', 'label_completion'];
     }
 
-    protected function get_javascript_init_params($course, \cm_info $cm = null,
-            \section_info $section = null) {
+    protected function get_javascript_init_params($course, cm_info $cm = null,
+                                                  section_info $section = null) {
         // Use cached result if available. The cache is just because we call it
         // twice (once from allow_add) so it's nice to avoid doing all the
         // print_string calls twice.
@@ -50,9 +55,9 @@ class frontend extends \core_availability\frontend {
         if ($cachekey !== $this->cachekey) {
             // Get list of activities on course which have completion values,
             // to fill the dropdown.
-            $context = \context_course::instance($course->id);
+            $context = context_course::instance($course->id);
             //get all course name
-            $datcms = array();
+            $datcms = [];
             global $DB;
             $sql2 = "SELECT * FROM {course} 
                     ORDER BY fullname ASC";
@@ -60,27 +65,27 @@ class frontend extends \core_availability\frontend {
             //$other = get_courses();
             foreach ($other as $othercm) {
                 //disable not created course and default course
-                if(($othercm->category > 0) && ($othercm->id != $course->id)){
-                        $datcms[] = (object)array(
-                            'id' => $othercm->id,
-                            'name' => format_string($othercm->fullname, true, array('context' => $context))
-                            // 'completiongradeitemnumber' => $othercm->completiongradeitemnumber
-                        );
+                if (($othercm->category > 0) && ($othercm->id != $course->id)) {
+                    $datcms[] = (object)[
+                        'id'   => $othercm->id,
+                        'name' => format_string($othercm->fullname, true, ['context' => $context])
+                        // 'completiongradeitemnumber' => $othercm->completiongradeitemnumber
+                    ];
                 }
             }
             $this->cachekey = $cachekey;
-            $this->cacheinitparams = array($datcms);
+            $this->cacheinitparams = [$datcms];
         }
         return $this->cacheinitparams;
     }
 
-    protected function allow_add($course, \cm_info $cm = null,
-            \section_info $section = null) {
+    protected function allow_add($course, cm_info $cm = null,
+                                 section_info $section = null) {
         global $CFG;
 
         // Check if completion is enabled for the course.
         require_once($CFG->libdir . '/completionlib.php');
-        $info = new \completion_info($course);
+        $info = new completion_info($course);
         if (!$info->is_enabled()) {
             return false;
         }

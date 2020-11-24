@@ -17,9 +17,9 @@
 /**
  * Language strings.
  *
- * @package availability_othercompleted
+ * @package   availability_othercompleted
  * @copyright MU DOT MY PLT <support@mu.my>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['description'] = 'Require students to complete other course .';

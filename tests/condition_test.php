@@ -17,14 +17,17 @@
 /**
  * Unit tests for the other completion condition.
  *
- * @package availability_othercompleted
+ * @package   availability_othercompleted
  * @copyright MU DOT MY PLT <support@mu.my>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 use availability_othercompleted\condition;
+use core_availability\info;
+use core_availability\mock_info;
+use core_availability\tree;
 
 global $CFG;
 require_once($CFG->libdir . '/completionlib.php');
@@ -32,9 +35,9 @@ require_once($CFG->libdir . '/completionlib.php');
 /**
  * Unit tests for the completion condition.
  *
- * @package availability_othercompleted
+ * @package   availability_othercompleted
  * @copyright MU DOT MY PLT <support@mu.my>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class availability_othercompleted_condition_testcase extends advanced_testcase {
     /**
@@ -59,19 +62,26 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $CFG->enablecompletion = true;
         $CFG->enableavailability = true;
         $generator = $this->getDataGenerator();
-        $course = $generator->create_course(array('enablecompletion' => 1));
+        $course = $generator->create_course(['enablecompletion' => 1]);
         $page = $generator->get_plugin_generator('mod_page')->create_instance(
-                array('course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL));
+            ['course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL]);
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new \core_availability\mock_info($course, $USER->id);
-       
+        $info = new mock_info($course, $USER->id);
 
-        $structure = (object)array('op' => '|', 'show' => true, 'c' => array(
-                (object)array('type' => 'othercompleted', 'cm' => (int)$cm->id,
-                'e' => COMPLETION_COMPLETE)));
-        $tree = new \core_availability\tree($structure);
+        $structure = (object)[
+            'op'   => '|',
+            'show' => true,
+            'c'    => [
+                (object)[
+                    'type' => 'othercompleted',
+                    'cm'   => (int)$cm->id,
+                    'e'    => COMPLETION_COMPLETE,
+                ],
+            ],
+        ];
+        $tree = new tree($structure);
 
         // Initial check (user has not completed activity).
         $result = $tree->check_available(false, $info, true, $USER->id);
@@ -137,7 +147,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
      * Tests the save() function.
      */
     public function test_save() {
-        $structure = (object)array('cm' => 42, 'e' => COMPLETION_COMPLETE);
+        $structure = (object)['cm' => 42, 'e' => COMPLETION_COMPLETE];
         $cond = new condition($structure);
         $structure->type = 'othercompleted';
         $this->assertEquals($structure, $cond->save());
@@ -155,38 +165,45 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $CFG->enablecompletion = true;
         $CFG->enableavailability = true;
         $generator = $this->getDataGenerator();
-        $course = $generator->create_course(array('enablecompletion' => 1));
+        $course = $generator->create_course(['enablecompletion' => 1]);
         $user = $generator->create_user();
         $generator->enrol_user($user->id, $course->id);
         $this->setUser($user);
 
         // Create a Page with manual completion for basic checks.
         $page = $generator->get_plugin_generator('mod_page')->create_instance(
-                array('course' => $course->id, 'name' => 'Page!',
-                'othercompleted' => COMPLETION_TRACKING_MANUAL));
+            [
+                'course'         => $course->id,
+                'name'           => 'Page!',
+                'othercompleted' => COMPLETION_TRACKING_MANUAL,
+            ]);
 
         // Create an assignment - we need to have something that can be graded
         // so as to test the PASS/FAIL states.
 
-        $assignrow = $this->getDataGenerator()->create_module('assign', array(
-                'course' => $course->id, 'name' => 'Assign!',
-                'othercompleted' => COMPLETION_TRACKING_AUTOMATIC));
+        $assignrow = $this->getDataGenerator()->create_module('assign', [
+            'course'         => $course->id,
+            'name'           => 'Assign!',
+            'othercompleted' => COMPLETION_TRACKING_AUTOMATIC,
+        ]);
         $DB->set_field('course_modules', 'completiongradeitemnumber', 0,
-                array('id' => $assignrow->cmid));
+                       ['id' => $assignrow->cmid]);
         $assign = new assign(context_module::instance($assignrow->cmid), false, false);
 
         // Get basic details.
         $modinfo = get_fast_modinfo($course);
         $pagecm = $modinfo->get_cm($page->cmid);
         $assigncm = $assign->get_course_module();
-        $info = new \core_availability\mock_info($course, $user->id);
+        $info = new mock_info($course, $user->id);
 
         // LENGKAP state (false), positif dan TIDAK.
-        $cond = new condition((object)array(
-                'cm' => (int)$pagecm->id, 'e' => COMPLETION_COMPLETE));
+        $cond = new condition((object)[
+            'cm' => (int)$pagecm->id,
+            'e'  => COMPLETION_COMPLETE,
+        ]);
         $this->assertFalse($cond->is_available(false, $info, true, $user->id));
         $information = $cond->get_description(false, false, $info);
-        $information = \core_availability\info::format_info($information, $course);
+        $information = info::format_info($information, $course);
         $this->assertRegExp('~Page!.*is marked complete~', $information);
         $this->assertTrue($cond->is_available(true, $info, true, $user->id));
 
@@ -195,14 +212,15 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $completion->update_state($pagecm, COMPLETION_COMPLETE);
 
         // COMPLETE state (true).
-        $cond = new condition((object)array(
-                'cm' => (int)$pagecm->id, 'e' => COMPLETION_COMPLETE));
+        $cond = new condition((object)[
+            'cm' => (int)$pagecm->id,
+            'e'  => COMPLETION_COMPLETE,
+        ]);
         $this->assertTrue($cond->is_available(false, $info, true, $user->id));
         $this->assertFalse($cond->is_available(true, $info, true, $user->id));
         $information = $cond->get_description(false, true, $info);
-        $information = \core_availability\info::format_info($information, $course);
+        $information = info::format_info($information, $course);
         $this->assertRegExp('~Page!.*is incomplete~', $information);
-
     }
 
     /**
@@ -217,43 +235,45 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $CFG->enableavailability = true;
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(
-                array('numsections' => 1, 'enablecompletion' => 1),
-                array('createsections' => true));
+            ['numsections' => 1, 'enablecompletion' => 1],
+            ['createsections' => true]);
         availability_othercompleted\condition::wipe_static_cache();
 
         // Create three pages with manual completion.
         $page1 = $generator->get_plugin_generator('mod_page')->create_instance(
-                array('course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL));
+            ['course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL]);
         $page2 = $generator->get_plugin_generator('mod_page')->create_instance(
-                array('course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL));
+            ['course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL]);
         $page3 = $generator->get_plugin_generator('mod_page')->create_instance(
-                array('course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL));
+            ['course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL]);
 
         // Set up page3 to depend on page1, and section1 to depend on page2.
         $DB->set_field('course_modules', 'availability',
-                '{"op":"|","show":true,"c":[' .
-                '{"type":"othercompleted","e":1,"cm":' . $page1->cmid . '}]}',
-                array('id' => $page3->cmid));
+                       '{"op":"|","show":true,"c":[' .
+                       '{"type":"othercompleted","e":1,"cm":' . $page1->cmid . '}]}',
+                       ['id' => $page3->cmid]);
         $DB->set_field('course_sections', 'availability',
-                '{"op":"|","show":true,"c":[' .
-                '{"type":"othercompleted","e":1,"cm":' . $page2->cmid . '}]}',
-                array('course' => $course->id, 'section' => 1));
+                       '{"op":"|","show":true,"c":[' .
+                       '{"type":"othercompleted","e":1,"cm":' . $page2->cmid . '}]}',
+                       ['course' => $course->id, 'section' => 1]);
 
         // Now check: nothing depends on page3 but something does on the others.
         $this->assertTrue(availability_othercompleted\condition::completion_value_used(
-                $course, $page1->cmid));
+            $course, $page1->cmid));
         $this->assertTrue(availability_othercompleted\condition::completion_value_used(
-                $course, $page2->cmid));
+            $course, $page2->cmid));
         $this->assertFalse(availability_othercompleted\condition::completion_value_used(
-                $course, $page3->cmid));
+            $course, $page3->cmid));
     }
 
     /**
      * Tests the update_dependency_id() function.
      */
     public function test_update_dependency_id() {
-        $cond = new condition((object)array(
-                'cm' => 123, 'e' => COMPLETION_COMPLETE));
+        $cond = new condition((object)[
+            'cm' => 123,
+            'e'  => COMPLETION_COMPLETE,
+        ]);
         $this->assertFalse($cond->update_dependency_id('frogs', 123, 456));
         $this->assertFalse($cond->update_dependency_id('course_modules', 12, 34));
         $this->assertTrue($cond->update_dependency_id('course_modules', 123, 456));

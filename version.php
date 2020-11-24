@@ -17,9 +17,9 @@
 /**
  * Version info.
  *
- * @package availability_othercompleted
+ * @package   availability_othercompleted
  * @copyright MU DOT MY PLT <support@mu.my>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -28,5 +28,5 @@ $plugin->version = 2020051201;
 $plugin->maturity = MATURITY_STABLE;
 $plugin->release = 2020051201;
 $plugin->requires = 2017111300;
-$plugin->component = 'availability_othercompleted';                                                                                                                                                
+$plugin->component = 'availability_othercompleted';
 
