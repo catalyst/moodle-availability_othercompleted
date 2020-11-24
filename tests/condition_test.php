@@ -64,7 +64,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course(['enablecompletion' => 1]);
         $page = $generator->get_plugin_generator('mod_page')->create_instance(
-            ['course' => $course->id, 'othercompleted' => COMPLETION_TRACKING_MANUAL]);
+            ['course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL]);
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);

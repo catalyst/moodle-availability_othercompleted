@@ -26,21 +26,35 @@ namespace availability_othercompleted;
 
 use backup;
 use base_logger;
+use cache;
 use coding_exception;
 use core_availability\info;
 use core_availability\info_module;
 use core_availability\info_section;
 use restore_dbops;
+use stdClass;
 
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/completionlib.php');
 
 class condition extends \core_availability\condition {
+    /** @var int previous module cm value used to calculate relative completions */
+    public const OPTION_PREVIOUS = -1;
+
     /** @var int ID of module that this depends on */
     protected $cmid;
 
+    /** @var array IDs of the current module and section */
+    protected $selfids;
+
     /** @var int Expected completion type (one of the COMPLETE_xx constants) */
     protected $expectedcompletion;
+
+    /** @var array Array of previous cmids used to calculate relative completions */
+    protected $modfastprevious = [];
+
+    /** @var array Array of cmids previous to each course section */
+    protected $sectionfastprevious = [];
 
     /** @var array Array of modules used in these conditions for course */
     protected static $modsusedincondition = [];
@@ -93,19 +107,183 @@ class condition extends \core_availability\condition {
         ];
     }
 
-    public function is_available($not, info $info, $grabthelot, $userid) {
-        //get course completion details to allow preview
-        global $DB;
+    /**
+     * Return current item IDs (cmid and sectionid).
+     *
+     * @param info $info
+     * @return int[] with [0] => cmid/null, [1] => sectionid/null
+     */
+    public function get_selfids(info $info): array {
+        if (isset($this->selfids)) {
+            return $this->selfids;
+        }
+        if ($info instanceof info_module) {
+            $cminfo = $info->get_course_module();
+            if (!empty($cminfo->id)) {
+                $this->selfids = [$cminfo->id, null];
+                return $this->selfids;
+            }
+        }
+        if ($info instanceof info_section) {
+            $section = $info->get_section();
+            if (!empty($section->id)) {
+                $this->selfids = [null, $section->id];
+                return $this->selfids;
+            }
 
-        $course = $this->cmid;
-        $user = $DB->get_record('course_completions', ['userid' => $userid, 'course' => $course]);
+        }
+        return [null, null];
+    }
 
-        //if data is available means user has been completed course
-        if ($user !== false && $user->id > 0 && $user->timecompleted != null) {
+    /**
+     * Get the cmid referenced in the access restriction.
+     *
+     * @param stdClass $course course object
+     * @param int|null $selfcmid current course-module ID or null
+     * @param int|null $selfsectionid current course-section ID or null
+     * @return int|null cmid or null if no referenced cm is found
+     */
+    public function get_cmid(stdClass $course, ?int $selfcmid, ?int $selfsectionid): ?int {
+        if ($this->cmid > 0) {
+            return $this->cmid;
+        }
+        // If it's a relative completion, load fast browsing.
+        if ($this->cmid == self::OPTION_PREVIOUS) {
+            $prevcmid = $this->get_previous_cmid($course, $selfcmid, $selfsectionid);
+            if ($prevcmid) {
+                return $prevcmid;
+            }
+        }
+        return null;
+    }
+    /**
+     * Loads static information about a course elements previous activities.
+     *
+     * Populates two variables:
+     *   - $this->sectionprevious[] course-module previous to a cmid
+     *   - $this->sectionfastprevious[] course-section previous to a cmid
+     *
+     * @param stdClass $course course object
+     */
+    private function load_course_structure(stdClass $course): void {
+        // If already loaded we don't need to do anything.
+        if (empty($this->modfastprevious)) {
+            $previouscache = cache::make('availability_completion', 'previous_cache');
+            $this->modfastprevious = $previouscache->get("mod_{$course->id}");
+            $this->sectionfastprevious = $previouscache->get("sec_{$course->id}");
+        }
+
+        if (!empty($this->modfastprevious)) {
+            return;
+        }
+
+        if (empty($this->modfastprevious)) {
+            $this->modfastprevious = [];
+            $sectionprevious = [];
+
+            $modinfo = get_fast_modinfo($course);
+            $lastcmid = 0;
+            foreach ($modinfo->cms as $othercm) {
+                if ($othercm->deletioninprogress) {
+                    continue;
+                }
+                // Save first cm of every section.
+                if (!isset($sectionprevious[$othercm->section])) {
+                    $sectionprevious[$othercm->section] = $lastcmid;
+                }
+                // Load previous to all cms with completion.
+                if ($othercm->completion == COMPLETION_TRACKING_NONE) {
+                    continue;
+                }
+                if ($lastcmid) {
+                    $this->modfastprevious[$othercm->id] = $lastcmid;
+                }
+                $lastcmid = $othercm->id;
+            }
+            // Fill empty sections index.
+            $isections = array_reverse($modinfo->get_section_info_all());
+            foreach ($isections as $section) {
+                if (isset($sectionprevious[$section->id])) {
+                    $lastcmid = $sectionprevious[$section->id];
+                } else {
+                    $sectionprevious[$section->id] = $lastcmid;
+                }
+            }
+            $this->sectionfastprevious = $sectionprevious;
+            $previouscache->set("mod_{$course->id}", $this->modfastprevious);
+            $previouscache->set("sec_{$course->id}", $this->sectionfastprevious);
+        }
+    }
+
+    /**
+     * Return the previous CM ID of an specific course-module or course-section.
+     *
+     * @param stdClass $course course object
+     * @param int|null $selfcmid course-module ID or null
+     * @param int|null $selfsectionid course-section ID or null
+     * @return int|null
+     */
+    private function get_previous_cmid(stdClass $course, ?int $selfcmid, ?int $selfsectionid): ?int {
+        $this->load_course_structure($course);
+        if (isset($this->modfastprevious[$selfcmid])) {
+            return $this->modfastprevious[$selfcmid];
+        }
+        if (isset($this->sectionfastprevious[$selfsectionid])) {
+            return $this->sectionfastprevious[$selfsectionid];
+        }
+        return null;
+    }
+
+    /**
+     * Determines whether a particular item is currently available
+     * according to this availability condition.
+     *
+     * @see \core_availability\tree_node\update_after_restore
+     *
+     * @param bool $not Set true if we are inverting the condition
+     * @param info $info Item we're checking
+     * @param bool $grabthelot Performance hint: if true, caches information
+     *   required for all course-modules, to make the front page and similar
+     *   pages work more quickly (works only for current user)
+     * @param int $userid User ID to check availability for
+     * @return bool True if available
+     */
+    public function is_available($not, info $info, $grabthelot, $userid): bool {
+        [$selfcmid, $selfsectionid] = $this->get_selfids($info);
+        $cmid = $this->get_cmid($info->get_course(), $selfcmid, $selfsectionid);
+        $modinfo = $info->get_modinfo();
+        $completion = new \completion_info($modinfo->get_course());
+        if (!array_key_exists($cmid, $modinfo->cms) || $modinfo->cms[$cmid]->deletioninprogress) {
+            // If the cmid cannot be found, always return false regardless
+            // of the condition or $not state. (Will be displayed in the
+            // information message.)
+            $allow = false;
+        } else {
+            // The completion system caches its own data so no caching needed here.
+            $completiondata = $completion->get_data((object)['id' => $cmid],
+                                                    $grabthelot, $userid, $modinfo);
 
             $allow = true;
-        } else {
-            $allow = false;
+            if ($this->expectedcompletion == COMPLETION_COMPLETE) {
+                // Complete also allows the pass, fail states.
+                switch ($completiondata->completionstate) {
+                    case COMPLETION_COMPLETE:
+                    case COMPLETION_COMPLETE_FAIL:
+                    case COMPLETION_COMPLETE_PASS:
+                        break;
+                    default:
+                        $allow = false;
+                }
+            } else {
+                // Other values require exact match.
+                if ($completiondata->completionstate != $this->expectedcompletion) {
+                    $allow = false;
+                }
+            }
+
+            if ($not) {
+                $allow = !$allow;
+            }
         }
 
         return $allow;
