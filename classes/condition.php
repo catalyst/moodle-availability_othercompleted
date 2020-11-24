@@ -308,37 +308,60 @@ class condition extends \core_availability\condition {
         }
     }
 
-    //get details restrict access
-    public function get_description($full, $not, info $info) {
-        // Get name for module.
-        $modc = get_courses();
-
-        foreach ($modc as $modcs) {
-            if ($modcs->id == $this->cmid) {
-                $modname = $modcs->fullname;
+    /**
+     * Obtains a string describing this restriction (whether or not
+     * it actually applies).
+     *
+     * @param bool $full Set true if this is the 'full information' view
+     * @param bool $not Set true if we are inverting the condition
+     * @param info $info Item we're checking
+     * @return string Information string (for admin) about all restrictions on
+     *   this item
+     */
+    public function get_description($full, $not, info $info): string {
+        global $USER;
+        $str = 'requires_';
+        $course = $info->get_course();
+        list($selfcmid, $selfsectionid) = $this->get_selfids($info);
+        $modname = '';
+        // On ajax duplicate get_fast_modinfo is called before $PAGE->set_context
+        // so we cannot use $PAGE->user_is_editing().
+        $coursecontext = \context_course::instance($course->id);
+        $editing = !empty($USER->editing) && has_capability('moodle/course:manageactivities', $coursecontext);
+        if ($this->cmid == self::OPTION_PREVIOUS && $editing) {
+            // Previous activity name could be inconsistent when editing due to partial page loadings.
+            $str .= 'previous_';
+        } else {
+            // Get name for module.
+            $cmid = $this->get_cmid($course, $selfcmid, $selfsectionid);
+            $modinfo = $info->get_modinfo();
+            if (!array_key_exists($cmid, $modinfo->cms) || $modinfo->cms[$cmid]->deletioninprogress) {
+                $modname = get_string('missing', 'availability_completion');
+            } else {
+                $modname = '<AVAILABILITY_CMNAME_' . $modinfo->cms[$cmid]->id . '/>';
             }
         }
 
-        // Work out which lang string to use.
+        // Work out which lang string to use depending on required completion status.
         if ($not) {
             // Convert NOT strings to use the equivalent where possible.
             switch ($this->expectedcompletion) {
                 case COMPLETION_INCOMPLETE:
-                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_COMPLETE);
+                    $str .= self::get_lang_string_keyword(COMPLETION_COMPLETE);
                     break;
                 case COMPLETION_COMPLETE:
-                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_INCOMPLETE);
+                    $str .= self::get_lang_string_keyword(COMPLETION_INCOMPLETE);
                     break;
                 default:
                     // The other two cases do not have direct opposites.
-                    $str = 'requires_not_' . self::get_lang_string_keyword($this->expectedcompletion);
+                    $str .= 'not_' . self::get_lang_string_keyword($this->expectedcompletion);
                     break;
             }
         } else {
-            $str = 'requires_' . self::get_lang_string_keyword($this->expectedcompletion);
+            $str .= self::get_lang_string_keyword($this->expectedcompletion);
         }
 
-        return get_string($str, 'availability_othercompleted', $modname);
+        return get_string($str, 'availability_completion', $modname);
     }
 
     protected function get_debug_string() {

@@ -175,16 +175,16 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             [
                 'course'         => $course->id,
                 'name'           => 'Page!',
-                'othercompleted' => COMPLETION_TRACKING_MANUAL,
+                'completion' => COMPLETION_TRACKING_MANUAL,
             ]);
 
         // Create an assignment - we need to have something that can be graded
-        // so as to test the PASS/FAIL states.
-
+        // so as to test the PASS/FAIL states. Set it up to be completed based
+        // on its grade item.
         $assignrow = $this->getDataGenerator()->create_module('assign', [
             'course'         => $course->id,
             'name'           => 'Assign!',
-            'othercompleted' => COMPLETION_TRACKING_AUTOMATIC,
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
         ]);
         $DB->set_field('course_modules', 'completiongradeitemnumber', 0,
                        ['id' => $assignrow->cmid]);
@@ -196,7 +196,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $assigncm = $assign->get_course_module();
         $info = new mock_info($course, $user->id);
 
-        // LENGKAP state (false), positif dan TIDAK.
+        // COMPLETE state (false), positive and NOT.
         $cond = new condition((object)[
             'cm' => (int)$pagecm->id,
             'e'  => COMPLETION_COMPLETE,
@@ -207,7 +207,17 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $this->assertRegExp('~Page!.*is marked complete~', $information);
         $this->assertTrue($cond->is_available(true, $info, true, $user->id));
 
-        // COMPLETE state (false), positive and NOT.
+        // INCOMPLETE state (true).
+        $cond = new condition((object)[
+            'cm' => (int)$pagecm->id, 'e' => COMPLETION_INCOMPLETE
+        ]);
+        $this->assertTrue($cond->is_available(false, $info, true, $user->id));
+        $this->assertFalse($cond->is_available(true, $info, true, $user->id));
+        $information = $cond->get_description(false, true, $info);
+        $information = \core_availability\info::format_info($information, $course);
+        $this->assertRegExp('~Page!.*is marked complete~', $information);
+
+        // Mark page complete.
         $completion = new completion_info($course);
         $completion->update_state($pagecm, COMPLETION_COMPLETE);
 
