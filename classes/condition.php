@@ -335,10 +335,16 @@ class condition extends \core_availability\condition {
             // Get name for module.
             $cmid = $this->get_cmid($course, $selfcmid, $selfsectionid);
             $modinfo = $info->get_modinfo();
-            if (!array_key_exists($cmid, $modinfo->cms) || $modinfo->cms[$cmid]->deletioninprogress) {
+            $modvals = array_values($modinfo->cms);
+            if (!array_key_exists($cmid, $modvals) || $modvals[$cmid]->deletioninprogress) {
                 $modname = get_string('missing', 'availability_completion');
             } else {
-                $modname = '<AVAILABILITY_CMNAME_' . $modinfo->cms[$cmid]->id . '/>';
+                $modc = get_courses();
+                foreach($modc as $modcs) {
+                    if ($modcs->id == $this->cmid) {
+                        $modname = $modcs->fullname;
+                    }
+                }
             }
         }
 
