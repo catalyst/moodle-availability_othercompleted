@@ -107,42 +107,21 @@ class condition extends \core_availability\condition {
      * @param int $userid User ID to check availability for
      * @return bool True if available
      */
-    public function is_available($not, info $info, $grabthelot, $userid): bool {
-        [$selfcmid, $selfsectionid] = $this->get_selfids($info);
-        $cmid = $this->get_cmid($info->get_course(), $selfcmid, $selfsectionid);
-        $modinfo = $info->get_modinfo();
-        $completion = new \completion_info($modinfo->get_course());
-        if (!array_key_exists($cmid, $modinfo->cms) || $modinfo->cms[$cmid]->deletioninprogress) {
-            // If the cmid cannot be found, always return false regardless
-            // of the condition or $not state. (Will be displayed in the
-            // information message.)
-            $allow = false;
-        } else {
-            // The completion system caches its own data so no caching needed here.
-            $completiondata = $completion->get_data((object)['id' => $cmid],
-                                                    $grabthelot, $userid, $modinfo);
+    public function is_available($not, \core_availability\info $info, $grabthelot, $userid) {
+        //get course completion details to allow preview
+
+        global $DB;
+
+        $course = $this->cmid;
+        $user = $DB->get_record('course_completions', array('userid'=> $userid, 'course'=> $course));
+
+        //if data is available means user has been completed course
+        if ($user !== false && $user->id > 0 && $user->timecompleted != null) {
 
             $allow = true;
-            if ($this->expectedcompletion == COMPLETION_COMPLETE) {
-                // Complete also allows the pass, fail states.
-                switch ($completiondata->completionstate) {
-                    case COMPLETION_COMPLETE:
-                    case COMPLETION_COMPLETE_FAIL:
-                    case COMPLETION_COMPLETE_PASS:
-                        break;
-                    default:
-                        $allow = false;
-                }
-            } else {
-                // Other values require exact match.
-                if ($completiondata->completionstate != $this->expectedcompletion) {
-                    $allow = false;
-                }
-            }
-
-            if ($not) {
-                $allow = !$allow;
-            }
+        }
+        else{
+            $allow = false;
         }
 
         return $allow;
@@ -177,50 +156,37 @@ class condition extends \core_availability\condition {
      * @return string Information string (for admin) about all restrictions on
      *   this item
      */
-    public function get_description($full, $not, info $info): string {
-        global $USER;
-        $str = 'requires_';
-        $course = $info->get_course();
-        list($selfcmid, $selfsectionid) = $this->get_selfids($info);
-        $modname = '';
-        // On ajax duplicate get_fast_modinfo is called before $PAGE->set_context
-        // so we cannot use $PAGE->user_is_editing().
-        $coursecontext = \context_course::instance($course->id);
-        $editing = !empty($USER->editing) && has_capability('moodle/course:manageactivities', $coursecontext);
-        if ($this->cmid == self::OPTION_PREVIOUS && $editing) {
-            // Previous activity name could be inconsistent when editing due to partial page loadings.
-            $str .= 'previous_';
-        } else {
-            // Get name for module.
-            $cmid = $this->get_cmid($course, $selfcmid, $selfsectionid);
-            $modinfo = $info->get_modinfo();
-            if (!array_key_exists($cmid, $modinfo->cms) || $modinfo->cms[$cmid]->deletioninprogress) {
-                $modname = get_string('missing', 'availability_completion');
-            } else {
-                $modname = '<AVAILABILITY_CMNAME_' . $modinfo->cms[$cmid]->id . '/>';
+    public function get_description($full, $not, \core_availability\info $info) {
+        // Get name for module.
+        $modc = get_courses();
+
+        $modname = get_string('missing', 'availability_othercompleted');
+        foreach ($modc as $modcs) {
+            if($modcs->id == $this->cmid){
+                $modname = $modcs->fullname;
             }
         }
 
-        // Work out which lang string to use depending on required completion status.
+        // Work out which lang string to use.
         if ($not) {
             // Convert NOT strings to use the equivalent where possible.
             switch ($this->expectedcompletion) {
                 case COMPLETION_INCOMPLETE:
-                    $str .= self::get_lang_string_keyword(COMPLETION_COMPLETE);
+                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_COMPLETE);
                     break;
                 case COMPLETION_COMPLETE:
-                    $str .= self::get_lang_string_keyword(COMPLETION_INCOMPLETE);
+                    $str = 'requires_' . self::get_lang_string_keyword(COMPLETION_INCOMPLETE);
                     break;
                 default:
                     // The other two cases do not have direct opposites.
-                    $str .= 'not_' . self::get_lang_string_keyword($this->expectedcompletion);
+                    $str = 'requires_not_' . self::get_lang_string_keyword($this->expectedcompletion);
                     break;
             }
         } else {
-            $str .= self::get_lang_string_keyword($this->expectedcompletion);
+            $str = 'requires_' . self::get_lang_string_keyword($this->expectedcompletion);
         }
 
-        return get_string($str, 'availability_completion', $modname);
+        return get_string($str, 'availability_othercompleted', $modname);
     }
 
     protected function get_debug_string() {
