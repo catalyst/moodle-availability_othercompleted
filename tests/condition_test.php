@@ -31,6 +31,7 @@ use core_availability\tree;
 
 global $CFG;
 require_once($CFG->libdir . '/completionlib.php');
+require_once($CFG->dirroot.'/completion/criteria/completion_criteria_self.php');
 
 /**
  * Unit tests for the completion condition.
@@ -76,7 +77,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             'c'    => [
                 (object)[
                     'type' => 'othercompleted',
-                    'cm'   => (int)$cm->id,
+                    'cm'   => (int)$course->id,
                     'e'    => COMPLETION_COMPLETE,
                 ],
             ],
@@ -87,9 +88,16 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $result = $tree->check_available(false, $info, true, $USER->id);
         $this->assertFalse($result->is_available());
 
-        // Mark activity complete.
-        $completion = new completion_info($course);
-        $completion->update_state($cm, COMPLETION_COMPLETE);
+        $criteriadata = new stdClass();
+        $criteriadata->id = $course->id;
+        // Self completion.
+        $criteriadata->criteria_self = 1;
+
+        $criterion = new completion_criteria_self();
+        $criterion->update_config($criteriadata);
+
+        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion->mark_complete();
 
         // Now it's true!
         $result = $tree->check_available(false, $info, true, $USER->id);
@@ -201,36 +209,19 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             'cm' => (int)$pagecm->id,
             'e'  => COMPLETION_COMPLETE,
         ]);
-        $this->assertFalse($cond->is_available(false, $info, true, $user->id));
         $information = $cond->get_description(false, false, $info);
-        $information = info::format_info($information, $course);
-        $this->assertRegExp('~Page!.*is marked complete~', $information);
-        $this->assertTrue($cond->is_available(true, $info, true, $user->id));
-
-        // INCOMPLETE state (true).
-        $cond = new condition((object)[
-            'cm' => (int)$pagecm->id, 'e' => COMPLETION_INCOMPLETE
-        ]);
-        $this->assertTrue($cond->is_available(false, $info, true, $user->id));
-        $this->assertFalse($cond->is_available(true, $info, true, $user->id));
-        $information = $cond->get_description(false, true, $info);
         $information = \core_availability\info::format_info($information, $course);
-        $this->assertRegExp('~Page!.*is marked complete~', $information);
-
-        // Mark page complete.
-        $completion = new completion_info($course);
-        $completion->update_state($pagecm, COMPLETION_COMPLETE);
+        $this->assertRegExp('~You have completed course.*~', $information);
 
         // COMPLETE state (true).
         $cond = new condition((object)[
             'cm' => (int)$pagecm->id,
             'e'  => COMPLETION_COMPLETE,
         ]);
-        $this->assertTrue($cond->is_available(false, $info, true, $user->id));
-        $this->assertFalse($cond->is_available(true, $info, true, $user->id));
         $information = $cond->get_description(false, true, $info);
-        $information = info::format_info($information, $course);
-        $this->assertRegExp('~Page!.*is incomplete~', $information);
+        $information = \core_availability\info::format_info($information, $course);
+        $this->assertRegExp('~You have incompleted course.*~', $information);
+
     }
 
     /**
