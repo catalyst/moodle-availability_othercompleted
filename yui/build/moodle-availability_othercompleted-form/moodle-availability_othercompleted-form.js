@@ -30,16 +30,16 @@ YUI.add('moodle-availability_othercompleted-form', function (Y, NAME) {
             '<span class="accesshide">' + M.util.get_string('label_cm', 'availability_othercompleted') + ' </span>' +
             '<select class="custom-select" name="cm" title="' + M.util.get_string('label_cm', 'availability_othercompleted') + '">' +
             '<option value="0">' + M.util.get_string('choosedots', 'moodle') + '</option>';
-        for (var i = 0; i < this.datcm.length; i++) {
-            var cm = this.datcm[i];
-            // String has already been escaped using format_string.
-            html += '<option value="' + cm.id + '">' + cm.name + '</option>';
-        }
-        html += '</select></label> <label><span class="accesshide">' +
-            M.util.get_string('label_completion', 'availability_othercompleted') +
-            ' </span><select class="custom-select" ' +
-            'name="e" title="' + M.util.get_string('label_completion', 'availability_othercompleted') + '">' +
+    for (var i = 0; i < this.datcm.length; i++) {
+        var cm = this.datcm[i];
+        // String has already been escaped using format_string.
+        html += '<option value="' + cm.id + '">' + cm.name + '</option>';
+    }
+    html += '</select></label> <label><span class="accesshide">' +
+                M.util.get_string('label_completion', 'availability_othercompleted') +
+            ' </span><select class="custom-select" ' + 'name="e" title="' + M.util.get_string('label_completion', 'availability_othercompleted') + '">' +
             '<option value="1">' + M.util.get_string('option_complete', 'availability_othercompleted') + '</option>' +
+            '<option value="0">' + M.util.get_string('option_incomplete', 'availability_othercompleted') + '</option>' +
             '</select></label></span>';
         var node = Y.Node.create('<span class="form-inline">' + html + '</span>');
 

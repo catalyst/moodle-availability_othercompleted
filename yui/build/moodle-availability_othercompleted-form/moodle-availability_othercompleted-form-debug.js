@@ -36,11 +36,12 @@ YUI.add('moodle-availability_othercompleted-form', function (Y, NAME) {
             html += '<option value="' + cm.id + '">' + cm.name + '</option>';
         }
         html += '</select></label> <label><span class="accesshide">' +
-            M.util.get_string('label_completion', 'availability_othercompleted') +
-            ' </span><select class="custom-select" ' +
-            'name="e" title="' + M.util.get_string('label_completion', 'availability_othercompleted') + '">' +
-            '<option value="1">' + M.util.get_string('option_complete', 'availability_othercompleted') + '</option>' +
-            '</select></label></span>';
+                    M.util.get_string('label_completion', 'availability_othercompleted') +
+                ' </span><select class="custom-select" ' +
+                                'name="e" title="' + M.util.get_string('label_completion', 'availability_othercompleted') + '">' +
+                '<option value="1">' + M.util.get_string('option_complete', 'availability_othercompleted') + '</option>' +
+                '<option value="0">' + M.util.get_string('option_incomplete', 'availability_othercompleted') + '</option>' +
+                '</select></label></span>';
         var node = Y.Node.create('<span class="form-inline">' + html + '</span>');
 
         // Set initial values.
