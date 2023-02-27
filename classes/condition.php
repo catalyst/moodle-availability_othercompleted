@@ -116,8 +116,7 @@ class condition extends \core_availability\condition {
         $user = $DB->get_record('course_completions', array('userid'=> $userid, 'course'=> $course));
 
         //if data is available means user has been completed course
-        if ($user !== false && $user->id > 0 && $user->timecompleted != null) {
-
+        if(isset($user->id) && $user->id > 0 && $user->timecompleted != NULL) {
             $allow = true;
         }
         else{
