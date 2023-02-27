@@ -124,6 +124,11 @@ class condition extends \core_availability\condition {
             $allow = false;
         }
 
+        // Check expected completion use has not complete the course
+        if ($this->expectedcompletion === 0) {
+            $allow = !$allow;
+        }
+
         return $allow;
     }
 
@@ -157,6 +162,7 @@ class condition extends \core_availability\condition {
      *   this item
      */
     public function get_description($full, $not, \core_availability\info $info) {
+      global $DB;
         // Get name for module.
         $modc = get_courses();
 

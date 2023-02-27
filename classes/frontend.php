@@ -43,7 +43,7 @@ class frontend extends \core_availability\frontend {
     protected $cachekey = '';
 
     protected function get_javascript_strings() {
-        return ['option_complete', 'label_cm', 'label_completion'];
+        return array('option_complete', 'option_incomplete', 'label_cm', 'label_completion');
     }
 
     protected function get_javascript_init_params($course, cm_info $cm = null,
@@ -59,7 +59,7 @@ class frontend extends \core_availability\frontend {
             //get all course name
             $datcms = [];
             global $DB;
-            $sql2 = "SELECT * FROM {course} 
+            $sql2 = "SELECT * FROM {course}
                     ORDER BY fullname ASC";
             $other = $DB->get_records_sql($sql2);
             //$other = get_courses();
