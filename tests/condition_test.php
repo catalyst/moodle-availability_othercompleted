@@ -115,7 +115,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             $cond = new condition($structure);
             $this->fail();
         } catch (coding_exception $e) {
-            $this->assertContains('Missing or invalid ->cm', $e->getMessage());
+            $this->assertStringContainsString('Missing or invalid ->cm', $e->getMessage());
         }
 
         // Invalid $cm.
@@ -124,7 +124,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             $cond = new condition($structure);
             $this->fail();
         } catch (coding_exception $e) {
-            $this->assertContains('Missing or invalid ->cm', $e->getMessage());
+            $this->assertStringContainsString('Missing or invalid ->cm', $e->getMessage());
         }
 
         // Missing $e.
@@ -133,7 +133,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             $cond = new condition($structure);
             $this->fail();
         } catch (coding_exception $e) {
-            $this->assertContains('Missing or invalid ->e', $e->getMessage());
+            $this->assertStringContainsString('Missing or invalid ->e', $e->getMessage());
         }
 
         // Invalid $e.
@@ -142,7 +142,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
             $cond = new condition($structure);
             $this->fail();
         } catch (coding_exception $e) {
-            $this->assertContains('Missing or invalid ->e', $e->getMessage());
+            $this->assertStringContainsString('Missing or invalid ->e', $e->getMessage());
         }
 
         // Successful construct & display with all different expected values.
@@ -211,7 +211,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         ]);
         $information = $cond->get_description(false, false, $info);
         $information = \core_availability\info::format_info($information, $course);
-        $this->assertRegExp('~You have completed course.*~', $information);
+        $this->assertMatchesRegularExpression('~You have completed course.*~', $information);
 
         // COMPLETE state (true).
         $cond = new condition((object)[
@@ -220,7 +220,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         ]);
         $information = $cond->get_description(false, true, $info);
         $information = \core_availability\info::format_info($information, $course);
-        $this->assertRegExp('~You have incompleted course.*~', $information);
+        $this->assertMatchesRegularExpression('~You have incompleted course.*~', $information);
 
     }
 
