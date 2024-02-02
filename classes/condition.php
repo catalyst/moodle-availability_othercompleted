@@ -36,8 +36,8 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/completionlib.php');
 
 class condition extends \core_availability\condition {
-    /** @var int ID of module that this depends on */
-    protected $cmid;
+    /** @var int ID of course that this depends on */
+    protected $courseid;
 
     /** @var int Expected completion type (one of the COMPLETE_xx constants) */
     protected $expectedcompletion;
@@ -52,9 +52,9 @@ class condition extends \core_availability\condition {
      * @throws \coding_exception If invalid data structure.
      */
     public function __construct($structure) {
-        // Get cmid.
+        // Get courseid.
         if (isset($structure->cm) && is_number($structure->cm)) {
-            $this->cmid = (int)$structure->cm;
+            $this->courseid = (int)$structure->cm;
         } else {
             throw new coding_exception('Missing or invalid ->cm for completion condition');
         }
@@ -69,11 +69,8 @@ class condition extends \core_availability\condition {
     }
 
     public function save() {
-        return (object)[
-            'type' => 'othercompleted',
-            'cm'   => $this->cmid,
-            'e'    => $this->expectedcompletion,
-        ];
+        return (object)array('type' => 'othercompleted',
+                'course' => $this->courseid, 'e' => $this->expectedcompletion);
     }
 
     /**
@@ -82,15 +79,12 @@ class condition extends \core_availability\condition {
      * Intended for unit testing, as normally the JSON values are constructed
      * by JavaScript code.
      *
-     * @param int $cmid               Course id of other activity
+     * @param int $courseid Course id of other activity
      * @param int $expectedcompletion Expected completion value (COMPLETION_xx)
      */
-    public static function get_json($cmid, $expectedcompletion) {
-        return (object)[
-            'type' => 'othercompleted',
-            'cm'   => (int)$cmid,
-            'e'    => (int)$expectedcompletion,
-        ];
+    public static function get_json($courseid, $expectedcompletion) {
+        return (object)array('type' => 'othercompleted', 'course' => (int)$courseid,
+                'e' => (int)$expectedcompletion);
     }
 
     /**
@@ -111,7 +105,7 @@ class condition extends \core_availability\condition {
         
         global $DB;
 
-        $course = $this->cmid;
+        $course = $this->courseid;
         $sqlcoursecomplete = "SELECT * FROM {course_completions} as a WHERE a.course = $course AND a.userid = $userid";
         $datacompletes = $DB->get_records_sql($sqlcoursecomplete);
         $allow = false;
@@ -160,7 +154,7 @@ class condition extends \core_availability\condition {
         $modname = get_string('missing', 'availability_othercompleted');
 
         foreach ($modc as $modcs) {
-            if($modcs->id == $this->cmid){
+            if($modcs->id == $this->courseid){
                 $modname = $modcs->fullname;
             }
         }
@@ -198,26 +192,14 @@ class condition extends \core_availability\condition {
             default:
                 throw new coding_exception('Unexpected expected completion');
         }
-        return 'cm' . $this->cmid . ' ' . $type;
+        return 'course' . $this->courseid . ' ' . $type;
     }
 
-    public function update_after_restore($restoreid, $courseid, base_logger $logger, $name) {
+    public function include_after_restore($restoreid, $courseid, \base_logger $logger, $name, \base_task $task) {
         global $DB;
-        $rec = restore_dbops::get_backup_ids_record($restoreid, 'course_module', $this->cmid);
-        if (!$rec || !$rec->newitemid) {
-            // If we are on the same course (e.g. duplicate) then we can just
-            // use the existing one.
-            if ($DB->record_exists('course_modules',
-                                   ['id' => $this->cmid, 'course' => $courseid])) {
-                return false;
-            }
-            // Otherwise it's a warning.
-            $this->cmid = 0;
-            $logger->process('Restored item (' . $name .
-                             ') has availability condition on module that was not restored',
-                             backup::LOG_WARNING);
-        } else {
-            $this->cmid = (int)$rec->newitemid;
+
+        if (!$DB->record_exists('course', ['id' => $this->courseid])) {
+            return false;
         }
         return true;
     }
@@ -247,7 +229,7 @@ class condition extends \core_availability\condition {
                 $ci = new info_module($othercm);
                 $tree = $ci->get_availability_tree();
                 foreach ($tree->get_all_children('availability_othercompleted\condition') as $cond) {
-                    self::$modsusedincondition[$course->id][$cond->cmid] = true;
+                    self::$modsusedincondition[$course->id][$cond->courseid] = true;
                 }
             }
 
@@ -259,7 +241,7 @@ class condition extends \core_availability\condition {
                 $ci = new info_section($section);
                 $tree = $ci->get_availability_tree();
                 foreach ($tree->get_all_children('availability_othercompleted\condition') as $cond) {
-                    self::$modsusedincondition[$course->id][$cond->cmid] = true;
+                    self::$modsusedincondition[$course->id][$cond->courseid] = true;
                 }
             }
         }
@@ -274,8 +256,8 @@ class condition extends \core_availability\condition {
     }
 
     public function update_dependency_id($table, $oldid, $newid) {
-        if ($table === 'course_modules' && (int)$this->cmid === (int)$oldid) {
-            $this->cmid = $newid;
+        if ($table === 'course_modules' && (int)$this->courseid === (int)$oldid) {
+            $this->courseid = $newid;
             return true;
         } else {
             return false;
