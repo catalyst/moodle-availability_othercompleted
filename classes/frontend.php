@@ -48,10 +48,12 @@ class frontend extends \core_availability\frontend {
 
     protected function get_javascript_init_params($course, cm_info $cm = null,
                                                   section_info $section = null) {
+        global $USER;
+
         // Use cached result if available. The cache is just because we call it
         // twice (once from allow_add) so it's nice to avoid doing all the
         // print_string calls twice.
-        $cachekey = $course->id . ',' . ($cm ? $cm->id : '') . ($section ? $section->id : '');
+        $cachekey = $course->id . ',' . ($cm ? $cm->id : '') . ($section ? $section->id : '') . $USER->id;
         if ($cachekey !== $this->cachekey) {
             // Get list of activities on course which have completion values,
             // to fill the dropdown.
@@ -62,7 +64,13 @@ class frontend extends \core_availability\frontend {
             $sql2 = "SELECT * FROM {course}
                     ORDER BY fullname ASC";
             $other = $DB->get_records_sql($sql2);
-            //$other = get_courses();
+
+            // Filter courses for access, users should only be able to create restrictions on courses they can edit.
+            $other = array_filter($other, function($course) {
+                $context = \context_course::instance($course->id);
+                return has_capability('moodle/course:update', $context);
+            });
+
             foreach ($other as $othercm) {
                 //disable not created course and default course
                 if (($othercm->category > 0) && ($othercm->id != $course->id)) {
