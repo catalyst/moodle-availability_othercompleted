@@ -43,7 +43,7 @@ class frontend extends \core_availability\frontend {
     protected $cachekey = '';
 
     protected function get_javascript_strings() {
-        return array('option_complete', 'option_incomplete', 'label_cm', 'label_completion');
+        return array('option_complete', 'label_cm', 'label_completion');
     }
 
     protected function get_javascript_init_params($course, cm_info $cm = null,
@@ -64,21 +64,15 @@ class frontend extends \core_availability\frontend {
             $sql2 = "SELECT * FROM {course}
                     ORDER BY fullname ASC";
             $other = $DB->get_records_sql($sql2);
-
-            // Filter courses for access, users should only be able to create restrictions on courses they can edit.
-            $other = array_filter($other, function($course) {
-                $context = \context_course::instance($course->id);
-                return has_capability('moodle/course:update', $context);
-            });
-
+            // $other = get_courses();
             foreach ($other as $othercm) {
-                //disable not created course and default course
-                if (($othercm->category > 0) && ($othercm->id != $course->id)) {
-                    $datcms[] = (object)[
-                        'id'   => $othercm->id,
-                        'name' => format_string($othercm->fullname, true, ['context' => $context])
-                        // 'completiongradeitemnumber' => $othercm->completiongradeitemnumber
-                    ];
+                // disable not created course and default course
+                if(($othercm->category > 0) && ($othercm->id != $course->id)){
+                        $datcms[] = (object)array(
+                            'id' => $othercm->id,
+                            'name' => format_string($othercm->fullname, true, array('context' => $context))
+                            // 'completiongradeitemnumber' => $othercm->completiongradeitemnumber
+                        );
                 }
             }
             $this->cachekey = $cachekey;

@@ -69,7 +69,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new mock_info($course, $USER->id);
+        $info = new \core_availability\mock_info($course, $USER->id);
 
         $structure = (object)[
             'op'   => '|',
