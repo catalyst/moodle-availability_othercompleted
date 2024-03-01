@@ -15,18 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version info.
+ * Activity other completion condition services.
  *
  * @package   availability_othercompleted
- * @copyright MU DOT MY PLT <support@mu.my>
+ * @copyright 2024 Catalyst IT
+ * @author    Matthew Hilton <matthewhilton@catalyst-au.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2021112501;
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = 2021033000;
-$plugin->requires = 2019051100;
-$plugin->component = 'availability_othercompleted';
-
+$functions = [
+    'availability_othercompleted_list_potential_courses' => [
+        'classname' => 'availability_othercompleted\external\list_potential_courses',
+        'methodname' => 'get',
+        'description' => 'Lists potential courses to be selected',
+        'type' => 'read',
+        'ajax' => true,
+    ],
+];

@@ -77,6 +77,14 @@ class condition extends \core_availability\condition {
     }
 
     /**
+     * Returns the course id linked to this condition
+     * @return int
+     */
+    public function get_course() {
+        return $this->cmid;
+    }
+
+    /**
      * Returns a JSON object which corresponds to a condition of this type.
      *
      * Intended for unit testing, as normally the JSON values are constructed

@@ -27,7 +27,9 @@ namespace availability_othercompleted;
 use cm_info;
 use completion_info;
 use context_course;
+use core_availability\info_module;
 use section_info;
+use Throwable;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -48,43 +50,28 @@ class frontend extends \core_availability\frontend {
 
     protected function get_javascript_init_params($course, cm_info $cm = null,
                                                   section_info $section = null) {
-        global $USER;
-
-        // Use cached result if available. The cache is just because we call it
-        // twice (once from allow_add) so it's nice to avoid doing all the
-        // print_string calls twice.
-        $cachekey = $course->id . ',' . ($cm ? $cm->id : '') . ($section ? $section->id : '') . $USER->id;
-        if ($cachekey !== $this->cachekey) {
-            // Get list of activities on course which have completion values,
-            // to fill the dropdown.
-            $context = context_course::instance($course->id);
-            //get all course name
-            $datcms = [];
-            global $DB;
-            $sql2 = "SELECT * FROM {course}
-                    ORDER BY fullname ASC";
-            $other = $DB->get_records_sql($sql2);
-
-            // Filter courses for access, users should only be able to create restrictions on courses they can edit.
-            $other = array_filter($other, function($course) {
-                $context = \context_course::instance($course->id);
-                return has_capability('moodle/course:update', $context);
-            });
-
-            foreach ($other as $othercm) {
-                //disable not created course and default course
-                if (($othercm->category > 0) && ($othercm->id != $course->id)) {
-                    $datcms[] = (object)[
-                        'id'   => $othercm->id,
-                        'name' => format_string($othercm->fullname, true, ['context' => $context])
-                        // 'completiongradeitemnumber' => $othercm->completiongradeitemnumber
-                    ];
-                }
-            }
-            $this->cachekey = $cachekey;
-            $this->cacheinitparams = [$datcms];
+        // If availability not enabled, there's nothing to do.
+        if (empty($cm->availability)) {
+            return [];
         }
-        return $this->cacheinitparams;
+
+        try {
+            // Find the course names of all courses used by all othercompleted availability conditions
+            // So the JS module can use it to prefill the form.
+            $coursenamesprefill = [];
+            $ci = new info_module($cm);
+            $tree = $ci->get_availability_tree();
+            foreach ($tree->get_all_children('availability_othercompleted\condition') as $cond) {
+                global $DB;
+                $courseid = $cond->get_course();
+                $coursenamesprefill[$courseid] = $DB->get_field('course', 'fullname', ['id' => $courseid]);
+            }
+
+            return [$coursenamesprefill];
+        } catch (Throwable $e) {
+            // Return no prefill - JS will just use "Unknown course" instead.
+            return [];
+        }
     }
 
     protected function allow_add($course, cm_info $cm = null,
@@ -94,12 +81,6 @@ class frontend extends \core_availability\frontend {
         // Check if completion is enabled for the course.
         require_once($CFG->libdir . '/completionlib.php');
         $info = new completion_info($course);
-        if (!$info->is_enabled()) {
-            return false;
-        }
-
-        // Check if there's at least one other module with completion info.
-        $params = $this->get_javascript_init_params($course, $cm, $section);
-        return ((array)$params[0]) != false;
+        return $info->is_enabled();
     }
 }
