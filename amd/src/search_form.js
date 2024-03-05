@@ -1,4 +1,3 @@
-<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -14,19 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+import Autocomplete from 'core/form-autocomplete';
+
 /**
- * Version info.
- *
- * @package   availability_othercompleted
- * @copyright MU DOT MY PLT <support@mu.my>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Initialises the course search autocomplete
+ * @param {string} selector select element DOM selector
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version = 2021112501;
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = 2021033000;
-$plugin->requires = 2019051100;
-$plugin->component = 'availability_othercompleted';
-
+export const init = async (selector) => {
+    Autocomplete.enhance(selector, false, 'availability_othercompleted/search_form_datasource', '',
+        false, true, 'Nothing selected', true);
+}
