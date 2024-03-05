@@ -22,11 +22,11 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['description'] = 'Require students to complete other course .';
+$string['description'] = 'Require students to complete other course.';
 $string['error_selectcmid'] = 'You must select an course for the completion condition.';
 $string['label_cm'] = 'Activity or resource';
 $string['label_completion'] = 'Required completion status';
-$string['missing'] = '(Missing activity)';
+$string['missing'] = '(Missing course)';
 $string['option_complete'] = 'must be marked complete';
 $string['option_incomplete'] = 'must not be marked complete';
 $string['pluginname'] = 'Restriction by other course completion';

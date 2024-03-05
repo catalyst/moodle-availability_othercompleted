@@ -169,15 +169,14 @@ class condition extends \core_availability\condition {
      *   this item
      */
     public function get_description($full, $not, \core_availability\info $info) {
-      global $DB;
-        // Get name for module.
-        $modc = get_courses();
+        global $DB;
 
-        $modname = get_string('missing', 'availability_othercompleted');
-        foreach ($modc as $modcs) {
-            if($modcs->id == $this->cmid){
-                $modname = $modcs->fullname;
-            }
+        // Find the course, and allow missing.
+        $coursename = $DB->get_field('course', 'fullname', ['id' => $this->cmid]);
+
+        // Course might have been deleted - let the user know its missing.
+        if (empty($coursename)) {
+            $coursename = get_string('missing', 'availability_othercompleted');
         }
 
         // Work out which lang string to use.
@@ -199,7 +198,7 @@ class condition extends \core_availability\condition {
             $str = 'requires_' . self::get_lang_string_keyword($this->expectedcompletion);
         }
 
-        return get_string($str, 'availability_othercompleted', $modname);
+        return get_string($str, 'availability_othercompleted', $coursename);
     }
 
     protected function get_debug_string() {
