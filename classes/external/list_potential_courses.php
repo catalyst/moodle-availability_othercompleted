@@ -17,6 +17,11 @@
 namespace availability_othercompleted\external;
 
 use context_course;
+use core_external\external_api;
+use core_external\external_function_parameters;
+use core_external\external_multiple_structure;
+use core_external\external_single_structure;
+use core_external\external_value;
 
 /**
  * Gets potential courses for form autocomplete.
@@ -25,15 +30,15 @@ use context_course;
  * @copyright Catalyst IT
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class list_potential_courses extends \external_api {
+class list_potential_courses extends external_api {
 
     /**
      * Specifies parameters
      * @return mixed external function parameters
      */
     public static function get_parameters() {
-        return new \external_function_parameters([
-            'query' => new \external_value(PARAM_TEXT, 'Query string to filter results', VALUE_DEFAULT, ''),
+        return new external_function_parameters([
+            'query' => new external_value(PARAM_TEXT, 'Query string to filter results', VALUE_DEFAULT, ''),
             ]);
     }
 
@@ -78,9 +83,9 @@ class list_potential_courses extends \external_api {
      * @return mixed external function return structure
      */
     public static function get_returns() {
-        return new \external_multiple_structure(new \external_single_structure([
-            'id' => new \external_value(PARAM_INT, 'id of the course'),
-            'fullname' => new \external_value(PARAM_TEXT, 'The fullname of the course'),
+        return new external_multiple_structure(new external_single_structure([
+            'id' => new external_value(PARAM_INT, 'id of the course'),
+            'fullname' => new external_value(PARAM_TEXT, 'The fullname of the course'),
         ]));
     }
 }

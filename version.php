@@ -29,4 +29,5 @@ $plugin->maturity = MATURITY_STABLE;
 $plugin->release = 2021033000;
 $plugin->requires = 2019051100;
 $plugin->component = 'availability_othercompleted';
+$plugin->supported = [405, 405];
 
