@@ -206,7 +206,13 @@ M.availability_othercompleted.form.fillValue = function (value, node) {
  * @param {Object} node
  */
 M.availability_othercompleted.form.fillErrors = function (errors, node) {
-    // No errors possible.
+    var value = {};
+    this.fillValue(value, node);
+
+    // Check course id is set.
+    if (!value.cm) {
+        errors.push('availability_othercompleted:error_selectcmid');
+    }
 };
 
 /**
