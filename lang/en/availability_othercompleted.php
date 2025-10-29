@@ -23,7 +23,7 @@
  */
 
 $string['description'] = 'Require students to complete other course.';
-$string['error_selectcmid'] = 'You must select an course for the completion condition.';
+$string['error_selectcmid'] = 'You must select a course for the completion condition.';
 $string['label_cm'] = 'Activity or resource';
 $string['label_completion'] = 'Required completion status';
 $string['missing'] = '(Missing course)';
