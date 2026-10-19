@@ -62,7 +62,7 @@ class condition extends \core_availability\condition {
         // Get expected completion.
         if (isset($structure->e) && in_array($structure->e,
                                              [COMPLETION_COMPLETE, COMPLETION_INCOMPLETE])) {
-            $this->expectedcompletion = $structure->e;
+            $this->expectedcompletion = (int)$structure->e;
         } else {
             throw new coding_exception('Missing or invalid ->e for completion condition');
         }
@@ -132,7 +132,11 @@ class condition extends \core_availability\condition {
         }
 
         // Check expected completion use has not complete the course
-        if ($this->expectedcompletion === 0) {
+        if ($this->expectedcompletion === COMPLETION_INCOMPLETE) {
+            $allow = !$allow;
+        }
+
+        if ($not) {
             $allow = !$allow;
         }
 
