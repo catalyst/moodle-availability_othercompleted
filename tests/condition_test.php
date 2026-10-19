@@ -105,6 +105,101 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
     }
 
     /**
+     * Tests that the "complete" and "incomplete" variants of the condition behave as
+     * opposites of each other when the structure is built from stored/decoded JSON,
+     * where numeric values such as ->e arrive as strings (e.g. "0"/"1") rather than
+     * ints. Regression test for a bug where a strict (===) comparison against the
+     * int 0 meant the "incomplete" variant never inverted its result.
+     */
+    public function test_in_tree_json_string_values() {
+        global $USER, $CFG;
+        $this->resetAfterTest();
+
+        $this->setAdminUser();
+
+        $CFG->enablecompletion = true;
+        $CFG->enableavailability = true;
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['enablecompletion' => 1]);
+        $page = $generator->get_plugin_generator('mod_page')->create_instance(
+            ['course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL]);
+
+        $modinfo = get_fast_modinfo($course);
+        $cm = $modinfo->get_cm($page->cmid);
+        $info = new mock_info($course, $USER->id);
+
+        // Simulate loading the availability structure as it is actually stored in the
+        // database: a JSON string decoded back into an object, where ->e is a JSON
+        // string value (e.g. "1" or "0"), exactly as submitted by the editing form.
+        $completetree = new tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
+            . (int)$course->id . ',"e":"' . COMPLETION_COMPLETE . '"}]}'));
+        $incompletetree = new tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
+            . (int)$course->id . ',"e":"' . COMPLETION_INCOMPLETE . '"}]}'));
+
+        // Before completion: "complete" should be unavailable, "incomplete" available.
+        $this->assertFalse($completetree->check_available(false, $info, true, $USER->id)->is_available());
+        $this->assertTrue($incompletetree->check_available(false, $info, true, $USER->id)->is_available());
+
+        $criteriadata = new stdClass();
+        $criteriadata->id = $course->id;
+        $criteriadata->criteria_self = 1;
+        $criterion = new completion_criteria_self();
+        $criterion->update_config($criteriadata);
+
+        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion->mark_complete();
+
+        // After completion: results must flip, never match each other.
+        $this->assertTrue($completetree->check_available(false, $info, true, $USER->id)->is_available());
+        $this->assertFalse($incompletetree->check_available(false, $info, true, $USER->id)->is_available());
+    }
+
+    /**
+     * Tests that is_available() honours the tree's NOT flag, as happens when this
+     * condition is nested inside a "None of the following" restriction set
+     * (tree op "!&"/"!|"). Regression test: previously $not was accepted but
+     * silently ignored, so the enforced access did not match the restriction
+     * description shown to users (which does honour $not via get_description()).
+     */
+    public function test_not_flag_is_honoured() {
+        global $USER, $CFG;
+        $this->resetAfterTest();
+
+        $this->setAdminUser();
+
+        $CFG->enablecompletion = true;
+        $CFG->enableavailability = true;
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['enablecompletion' => 1]);
+        $page = $generator->get_plugin_generator('mod_page')->create_instance(
+            ['course' => $course->id, 'completion' => COMPLETION_TRACKING_MANUAL]);
+
+        $modinfo = get_fast_modinfo($course);
+        $cm = $modinfo->get_cm($page->cmid);
+        $info = new mock_info($course, $USER->id);
+
+        // "None of the following" restriction set (op "!&") wrapping a single
+        // "must be marked complete" condition, as produced by the restrict access UI.
+        $nottree = new tree(json_decode('{"op":"!&","show":true,"c":[{"type":"othercompleted","cm":'
+            . (int)$course->id . ',"e":"' . COMPLETION_COMPLETE . '"}]}'));
+
+        // Before completion: NOT(complete) for an incomplete user should be available.
+        $this->assertTrue($nottree->check_available(false, $info, true, $USER->id)->is_available());
+
+        $criteriadata = new stdClass();
+        $criteriadata->id = $course->id;
+        $criteriadata->criteria_self = 1;
+        $criterion = new completion_criteria_self();
+        $criterion->update_config($criteriadata);
+
+        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion->mark_complete();
+
+        // After completion: NOT(complete) for a now-complete user should be unavailable.
+        $this->assertFalse($nottree->check_available(false, $info, true, $USER->id)->is_available());
+    }
+
+    /**
      * Tests the constructor including error conditions. Also tests the
      * string conversion feature (intended for debugging only).
      */
