@@ -14,20 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Unit tests for the other completion condition.
- *
- * @package   availability_othercompleted
- * @copyright MU DOT MY PLT <support@mu.my>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace availability_othercompleted;
 
 defined('MOODLE_INTERNAL') || die();
-
-use availability_othercompleted\condition;
-use core_availability\info;
-use core_availability\mock_info;
-use core_availability\tree;
 
 global $CFG;
 require_once($CFG->libdir . '/completionlib.php');
@@ -40,7 +29,7 @@ require_once($CFG->dirroot.'/completion/criteria/completion_criteria_self.php');
  * @copyright MU DOT MY PLT <support@mu.my>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class availability_othercompleted_condition_testcase extends advanced_testcase {
+final class condition_test extends \advanced_testcase {
     /**
      * include class needed
      */
@@ -69,7 +58,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new mock_info($course, $USER->id);
+        $info = new \core_availability\mock_info($course, $USER->id);
 
         $structure = (object)[
             'op'   => '|',
@@ -82,21 +71,21 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
                 ],
             ],
         ];
-        $tree = new tree($structure);
+        $tree = new \core_availability\tree($structure);
 
         // Initial check (user has not completed activity).
         $result = $tree->check_available(false, $info, true, $USER->id);
         $this->assertFalse($result->is_available());
 
-        $criteriadata = new stdClass();
+        $criteriadata = new \stdClass();
         $criteriadata->id = $course->id;
         // Self completion.
         $criteriadata->criteria_self = 1;
 
-        $criterion = new completion_criteria_self();
+        $criterion = new \completion_criteria_self();
         $criterion->update_config($criteriadata);
 
-        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion = new \completion_completion(array('course' => $course->id, 'userid' => $USER->id));
         $ccompletion->mark_complete();
 
         // Now it's true!
@@ -126,27 +115,27 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new mock_info($course, $USER->id);
+        $info = new \core_availability\mock_info($course, $USER->id);
 
         // Simulate loading the availability structure as it is actually stored in the
         // database: a JSON string decoded back into an object, where ->e is a JSON
         // string value (e.g. "1" or "0"), exactly as submitted by the editing form.
-        $completetree = new tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
+        $completetree = new \core_availability\tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
             . (int)$course->id . ',"e":"' . COMPLETION_COMPLETE . '"}]}'));
-        $incompletetree = new tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
+        $incompletetree = new \core_availability\tree(json_decode('{"op":"|","show":true,"c":[{"type":"othercompleted","cm":'
             . (int)$course->id . ',"e":"' . COMPLETION_INCOMPLETE . '"}]}'));
 
         // Before completion: "complete" should be unavailable, "incomplete" available.
         $this->assertFalse($completetree->check_available(false, $info, true, $USER->id)->is_available());
         $this->assertTrue($incompletetree->check_available(false, $info, true, $USER->id)->is_available());
 
-        $criteriadata = new stdClass();
+        $criteriadata = new \stdClass();
         $criteriadata->id = $course->id;
         $criteriadata->criteria_self = 1;
-        $criterion = new completion_criteria_self();
+        $criterion = new \completion_criteria_self();
         $criterion->update_config($criteriadata);
 
-        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion = new \completion_completion(array('course' => $course->id, 'userid' => $USER->id));
         $ccompletion->mark_complete();
 
         // After completion: results must flip, never match each other.
@@ -176,23 +165,23 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
 
         $modinfo = get_fast_modinfo($course);
         $cm = $modinfo->get_cm($page->cmid);
-        $info = new mock_info($course, $USER->id);
+        $info = new \core_availability\mock_info($course, $USER->id);
 
         // "None of the following" restriction set (op "!&") wrapping a single
         // "must be marked complete" condition, as produced by the restrict access UI.
-        $nottree = new tree(json_decode('{"op":"!&","show":true,"c":[{"type":"othercompleted","cm":'
+        $nottree = new \core_availability\tree(json_decode('{"op":"!&","show":true,"c":[{"type":"othercompleted","cm":'
             . (int)$course->id . ',"e":"' . COMPLETION_COMPLETE . '"}]}'));
 
         // Before completion: NOT(complete) for an incomplete user should be available.
         $this->assertTrue($nottree->check_available(false, $info, true, $USER->id)->is_available());
 
-        $criteriadata = new stdClass();
+        $criteriadata = new \stdClass();
         $criteriadata->id = $course->id;
         $criteriadata->criteria_self = 1;
-        $criterion = new completion_criteria_self();
+        $criterion = new \completion_criteria_self();
         $criterion->update_config($criteriadata);
 
-        $ccompletion = new completion_completion(array('course' => $course->id, 'userid' => $USER->id));
+        $ccompletion = new \completion_completion(array('course' => $course->id, 'userid' => $USER->id));
         $ccompletion->mark_complete();
 
         // After completion: NOT(complete) for a now-complete user should be unavailable.
@@ -205,11 +194,11 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
      */
     public function test_constructor() {
         // No parameters.
-        $structure = new stdClass();
+        $structure = new \stdClass();
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->cm', $e->getMessage());
         }
 
@@ -218,7 +207,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->cm', $e->getMessage());
         }
 
@@ -227,7 +216,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->e', $e->getMessage());
         }
 
@@ -236,7 +225,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         try {
             $cond = new condition($structure);
             $this->fail();
-        } catch (coding_exception $e) {
+        } catch (\coding_exception $e) {
             $this->assertStringContainsString('Missing or invalid ->e', $e->getMessage());
         }
 
@@ -291,13 +280,13 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         ]);
         $DB->set_field('course_modules', 'completiongradeitemnumber', 0,
                        ['id' => $assignrow->cmid]);
-        $assign = new assign(context_module::instance($assignrow->cmid), false, false);
+        $assign = new \assign(\context_module::instance($assignrow->cmid), false, false);
 
         // Get basic details.
         $modinfo = get_fast_modinfo($course);
         $pagecm = $modinfo->get_cm($page->cmid);
         $assigncm = $assign->get_course_module();
-        $info = new mock_info($course, $user->id);
+        $info = new \core_availability\mock_info($course, $user->id);
 
         // COMPLETE state (false), positive and NOT.
         $cond = new condition((object)[
@@ -333,7 +322,7 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
         $course = $generator->create_course(
             ['numsections' => 1, 'enablecompletion' => 1],
             ['createsections' => true]);
-        availability_othercompleted\condition::wipe_static_cache();
+        condition::wipe_static_cache();
 
         // Create three pages with manual completion.
         $page1 = $generator->get_plugin_generator('mod_page')->create_instance(
@@ -354,11 +343,11 @@ class availability_othercompleted_condition_testcase extends advanced_testcase {
                        ['course' => $course->id, 'section' => 1]);
 
         // Now check: nothing depends on page3 but something does on the others.
-        $this->assertTrue(availability_othercompleted\condition::completion_value_used(
+        $this->assertTrue(condition::completion_value_used(
             $course, $page1->cmid));
-        $this->assertTrue(availability_othercompleted\condition::completion_value_used(
+        $this->assertTrue(condition::completion_value_used(
             $course, $page2->cmid));
-        $this->assertFalse(availability_othercompleted\condition::completion_value_used(
+        $this->assertFalse(condition::completion_value_used(
             $course, $page3->cmid));
     }
 
